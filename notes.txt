@@ -1,0 +1,131 @@
+Working of the FAISS VectorDB:
+When you call _vectorstore.save_local(FAISS_DIR), it creates two files:
+1. index.faiss
+2. index.pkl
+
+1. index.faiss:
+It will contain All your embeddings (vectors)+ The FAISS ANN (Approximate Nearest Neighbor) data structure + Optimized binary representation
+In simple form it is described as “All knowledge encoded as vectors + the search structure needed to quickly find similar chunks.”
+
+2. index.pkl:
+LangChain stores metadata separately because FAISS itself cannot store:
+1. document text
+2. source file name
+3. page number
+4. chunk ID
+5. embeddings mapping
+6. metainfo (custom metadata)
+
+💡 Why do we need both files?
+
+During search:
+
+FAISS looks inside index.faiss
+→ finds vector IDs for nearest neighbors
+
+LangChain looks inside index.pkl
+→ retrieves the corresponding text chunks & metadata
+
+These chunks are given to your LLM
+→ for RAG answer generation
+
+Without index.pkl, FAISS returns only numbers.
+Without index.faiss, metadata is useless because FAISS cannot do similarity search.
+
+
+
+***FAISS only stores the embedding vectors, not the embedding model.
+
+embeddings is required because:
+
+✔ LangChain uses the embedding model object to:
+
+1. Embed new queries  
+2. Convert your user’s questions into vectors  
+3. Compare those vectors against index.faiss  
+
+FAISS cannot embed text → it only stores vectors.
+
+📘 What happens internally when you ask a question?
+1️⃣ User asks question:
+"What is the refund policy?"
+
+2️⃣ LangChain embeds the query using your embedding model:
+query_vec = embeddings.embed_query(text)
+
+3️⃣ FAISS searches closest vectors:
+results = faiss_index.search(query_vec)
+
+4️⃣ LangChain pulls matching text chunks from index.pkl
+
+Final Summary:
+| Question                                          | Answer                                              |
+| ------------------------------------------------- | --------------------------------------------------- |
+| “Do we already have all embeddings in FAISS_DIR?” | YES — but only document vectors, not query vectors  |
+| “Why pass embeddings to load_local?”              | Because LangChain needs it to embed **new queries** |
+| “What gets loaded from index.faiss?”              | Vector embeddings for your document chunks          |
+| “What does embeddings parameter do?”              | Converts future user queries → vectors              |
+
+
+How  the recursive character text splitter works?
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=800,
+    chunk_overlap=150,
+    separators=["\n\n", "\n", ".", "!", "?", ",", " "],
+)
+
+🧩 1. Meaning of the Separators (order matters!)
+
+The separators are tried from first to last:
+
+["\n\n", "\n", ".", "!", "?", ",", " "]
+
+
+This means:
+
+1. First try to split using paragraph breaks (\n\n)
+2. If that doesn't work, split by line breaks (\n)
+3. If the text is still too large, split by sentence boundaries (., !, ?)
+4. If still too large, split by comma
+5. If still too large, split by space (word boundary)
+6. As last resort, split anywhere at the character boundary (breaking a word)
+
+This gives human-like chunks.
+
+STEP 1 — Try the first separator ("\n\n")
+
+Split at paragraph breaks
+
+This gives a list of paragraph-sized pieces
+
+If any paragraph is larger than 800 characters, then:
+
+STEP 2 — For large pieces, try the next separator ("\n")
+
+Split big paragraphs into lines
+
+If any line is larger than 800 chars:
+
+STEP 3 — Try next separator (".", "!", "?")
+
+Split into sentences
+
+If any sentence is too long:
+
+STEP 4 — Try next separator (",")
+
+Split long sentences further
+
+If still long:
+
+STEP 5 — Try space (" ")
+
+Split at word boundaries
+
+If even words are too long (rare):
+
+STEP 6 — Fallback: split by characters
+
+If no separator can produce chunks <= 800 chars, the splitter splits purely by character count.
+
+
