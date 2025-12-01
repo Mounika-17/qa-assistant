@@ -129,3 +129,46 @@ STEP 6 — Fallback: split by characters
 If no separator can produce chunks <= 800 chars, the splitter splits purely by character count.
 
 
+
+Why we created HFEmbeddings?
+HFEmbeddings is a wrapper class around SentenceTransformer.
+
+LangChain’s FAISS and retriever expect an embedding object that implements two methods:
+
+embed_documents(texts) → used when building the FAISS index from documents.
+
+embed_query(text) → used when embedding a user query to search against the FAISS index.
+
+Key difference in design:
+
+| Embedding type                    | Need to define `embed_documents`/`embed_query`? | Why                                                                  |
+| --------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
+| GoogleGenerativeAIEmbeddings      | ❌ No                                            | Already implemented inside LangChain wrapper                         |
+| HuggingFace `SentenceTransformer` | ✅ Yes                                           | The raw model doesn’t know LangChain’s interface, so we must wrap it |
+
+Summary:
+1. HFEmbeddings is an adapter between SentenceTransformer and LangChain.
+2. Google’s embedding class already implements the interface, so we didn’t need to write it ourselves.
+3. The methods exist because LangChain requires a standard API for embeddings: one method for documents, one for queries.
+
+What is SentenceTransformer?
+
+1. SentenceTransformer is a Python library that allows you to convert text into vectors (embeddings).
+
+2. These embeddings are numerical representations of text that capture the meaning.
+
+3. It’s built on transformer models from HuggingFace.
+
+
+How is SentenceTransformer related to HuggingFace?
+
+1. HuggingFace provides pretrained transformer models (like BERT, RoBERTa, MiniLM).
+
+2. SentenceTransformer uses these HuggingFace models under the hood but adds an easy-to-use interface for sentence and document embeddings.
+
+3. So you don’t have to manually handle tokenization, pooling, or vector extraction — SentenceTransformer does it for you
+
+Simplified relationship:
+HuggingFace Transformers → underlying model
+SentenceTransformer → wraps HuggingFace models + provides encode() for sentences
+HFEmbeddings → wraps SentenceTransformer + exposes LangChain interface

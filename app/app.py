@@ -22,7 +22,8 @@ def create_app():
         """
         data = request.get_json(silent=True) or {}
         messages = data.get("messages", [])
-
+        
+        # we expect a list. If not, return HTTP 400 with error.
         if not isinstance(messages, list):
             return jsonify({"error": "messages must be a list"}), 400
 

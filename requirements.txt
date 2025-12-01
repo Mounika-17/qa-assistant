@@ -6,3 +6,5 @@ langchain-google-genai # LangChain integration for Google Gemini (chat model and
 langchain-community # Community integrations: FAISS vectorstore, document loaders, etc.
 faiss-cpu # FAISS library for similarity search on vectors (our vector DB).
 pypdf # Used internally by PyPDFLoader to read and extract text from PDFs.
+ipykernel
+sentence-transformers # Free HuggingFace Embedding model

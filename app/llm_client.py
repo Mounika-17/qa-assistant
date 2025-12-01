@@ -41,7 +41,7 @@ Always:
 """.strip()
 
 chat_model = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-2.5-flash",
     google_api_key=GEMINI_API_KEY,
     temperature=0.3, # 0.3 is lower means more deterministic and less random
 )
@@ -95,7 +95,7 @@ def build_context(query: str) -> str:
     and combine them into a single context string.
     """
     retriever = get_retriever()  # method from the rag_store.py file
-    docs = retriever.get_relevant_documents(query) # ask FAISS for the most similar chunks to the question.
+    docs = retriever.invoke(query) # ask FAISS for the most similar chunks to the question.
 
     chunks = []
     for d in docs:

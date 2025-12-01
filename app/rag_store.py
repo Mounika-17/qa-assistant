@@ -6,6 +6,8 @@ from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from sentence_transformers import SentenceTransformer
+from langchain.embeddings.base import Embeddings  # For LangChain wrapper
 
 # Loads .env and puts environment variables (like GEMINI_API_KEY) into os.environ for local runs.
 load_dotenv()
@@ -19,11 +21,39 @@ if not GEMINI_API_KEY:
 BASE_DIR = os.path.dirname(__file__)
 KB_PATH = os.path.join(BASE_DIR, "knowledge-base")
 
-# It tries to read an environment variable named FAISS_DIR. If FAISS_DIR exists, its value is used if not then it uses "qa_faiss_store" as the default folder name
+# It tries to read an environment variable named FAISS_DIR. If FAISS_DIR exists, its value is used if not then it uses "qa_faiss_store" as the default folder name.This line does NOT create the folder.It allows you to let the folder name be changed from outside the code
 FAISS_DIR = os.getenv("FAISS_DIR", "qa_faiss_store")
 
-# _embeddings can be either a GoogleGenerativeAIEmbeddings instance or None 
-_embeddings: Optional[GoogleGenerativeAIEmbeddings] = None
+"""
+HFEmbeddings is a wrapper class around SentenceTransformer.
+
+LangChain's FAISS and retriever expect an embedding object that implements two methods:
+1. embed_documents(texts) → used when building the FAISS index from documents.
+2. embed_query(text) → used when embedding a user query to search against the FAISS index.
+
+The SentenceTransformer library by itself does not know LangChain.
+SentenceTransformer provides a single method encode() which can handle one string or a list of strings and convert them into vectors.
+
+Therefore, we create HFEmbeddings to adapt SentenceTransformer to LangChain’s interface.
+
+"""
+# Take the HuggingFace embedding model and convert it into a LangChain Embeddings instance
+# This class inherits from Embeddings class
+class HFEmbeddings(Embeddings):
+    def __init__(self, model_name="all-MiniLM-L6-v2"):
+        self.model = SentenceTransformer(model_name)
+    
+    # This method is not aclled directly. FAISS.from_documents internally calls- embeddings.embed_documents([doc.page_content for doc in split_docs]), this is where embed_documents is executed, it takes all PDF chunks convert each chunk to a vector using SentenceTransformer and stores them in FAISS.
+    def embed_documents(self, texts):
+        return [self.model.encode(t).tolist() for t in texts]
+    
+    # This method is called when we make a query via a retriever(Ex: retriever.invoke("Your question here")), this method is also not called directly.
+    # This method is used when we make a query via the retriever. It converts the query into a vector and returns it so FAISS can search for similar chunks
+    def embed_query(self, text):
+        return self.model.encode(text).tolist()
+
+# _embeddings can be either a HuggingFace Embeddings instance or None 
+_embeddings: Optional[HFEmbeddings] = None
 # _vectorstore can be either a FAISS instance or None
 _vectorstore: Optional[FAISS] = None
 
@@ -31,9 +61,8 @@ _vectorstore: Optional[FAISS] = None
 def get_embeddings() -> GoogleGenerativeAIEmbeddings:
     global _embeddings
     if _embeddings is None:
-        _embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/embedding-001",
-            google_api_key=GEMINI_API_KEY,
+        _embeddings = HFEmbeddings(
+            model_name="all-MiniLM-L6-v2"  # HuggingFace model
         )
     return _embeddings
 
