@@ -1,0 +1,8 @@
+Flask # web framework for python used to create the routes /
+gunicorn # Production WSGI server. In Docker/EC2 we don't run flask directly gunicorn is more robust for handling requests
+python-dotenv # For loading the environment variables from a .env file during local development
+langchain # Core LangChain framework: prompts, chains, retrievers, utilities.
+langchain-google-genai # LangChain integration for Google Gemini (chat model and embeddings)
+langchain-community # Community integrations: FAISS vectorstore, document loaders, etc.
+faiss-cpu # FAISS library for similarity search on vectors (our vector DB).
+pypdf # Used internally by PyPDFLoader to read and extract text from PDFs.
