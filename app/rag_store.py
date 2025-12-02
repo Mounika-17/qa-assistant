@@ -3,7 +3,7 @@ from typing import Optional # type hint for values that might be None.
 
 from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import SentenceTransformer
@@ -19,7 +19,7 @@ if not GEMINI_API_KEY:
 # Path to knowledge-base folder inside app
 # BASE_DIR- directory of current file (app/).It returns the absolute path of the folder where the current Python file(rag_store.py) is located. It returns absolute path to the app folder.
 BASE_DIR = os.path.dirname(__file__)
-KB_PATH = os.path.join(BASE_DIR, "knowledge-base")
+KB_PATH = os.path.join(BASE_DIR, "knowledge_base")
 
 # It tries to read an environment variable named FAISS_DIR. If FAISS_DIR exists, its value is used if not then it uses "qa_faiss_store" as the default folder name.This line does NOT create the folder.It allows you to let the folder name be changed from outside the code
 FAISS_DIR = os.getenv("FAISS_DIR", "qa_faiss_store")

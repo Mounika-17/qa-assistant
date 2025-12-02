@@ -1,137 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>QA Assistant</title>
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/2.0.0/modern-normalize.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f5f5f5;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-      min-height: 100vh;
+    :root{
+      --bg:#f3f6fb;
+      --card:#ffffff;
+      --header:#0f1724;
+      --accent:#2563eb;
+      --assistant-bg:#eef2f6;
+      --user-bg:#2563eb;
+      --muted:#6b7280;
+      --radius:12px;
     }
-    .chat-container {
-      background: #ffffff;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 900px;
-      margin: 24px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#eef6ff 0%, #f7fafc 100%);
+      color:#0f1724;
+      display:flex;
+      justify-content:center;
+      padding:24px;
+      box-sizing:border-box;
     }
-    .chat-header {
-      padding: 16px 20px;
-      background: #1f2937;
-      color: #f9fafb;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+
+    .app { width:100%; max-width:960px; display:flex; flex-direction:column; gap:12px; }
+
+    .header {
+      background: linear-gradient(90deg,#0f1724,#0b2038);
+      color: #fff;
+      padding:16px 18px;
+      border-radius: var(--radius);
+      box-shadow: 0 6px 18px rgba(8,15,30,0.12);
+      display:flex; align-items:center; gap:12px;
     }
-    .chat-header h1 {
-      margin: 0;
-      font-size: 20px;
+    .logo { width:44px; height:44px; background: linear-gradient(135deg,#6ee7b7,#60a5fa); border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#07203a; }
+    .header h1{ margin:0; font-size:18px; }
+    .header p{ margin:0; font-size:13px; color:#cfe3ff; opacity:0.95; }
+
+    .chat-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 6px 24px rgba(11,20,36,0.06);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height:520px;
     }
-    .chat-header p {
-      margin: 0;
-      font-size: 13px;
-      opacity: 0.8;
-    }
+
     .messages {
-      padding: 16px;
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #f9fafb;
+      padding:12px 14px;           /* tightened */
+      flex:1;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f9fbff 100%);
     }
+
+    .message-row { display:flex; width:100%; gap:10px; align-items:flex-start; }
+    .message-row.assistant { justify-content:flex-start; }
+    .message-row.user { justify-content:flex-end; }
+
     .message {
-      max-width: 80%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-size: 14px;
-      line-height: 1.4;
-      white-space: pre-wrap;
+      display:inline-block;
+      max-width:78%;
+      padding:8px 12px;           /* smaller padding */
+      border-radius:12px;
+      font-size:14px;
+      line-height:1.35;          /* tighter line-height */
+      box-shadow: 0 2px 6px rgba(13,24,40,0.04);
+      overflow-wrap:break-word;
+      margin:0;
     }
-    .message.user {
-      align-self: flex-end;
-      background: #2563eb;
-      color: white;
-      border-bottom-right-radius: 2px;
-    }
+
+    .message .content { white-space:pre-wrap; }
+
     .message.assistant {
-      align-self: flex-start;
-      background: #e5e7eb;
-      color: #111827;
-      border-bottom-left-radius: 2px;
+      background: var(--assistant-bg);
+      color: #0f1724;
+      border-bottom-left-radius:8px;
+      border-bottom-right-radius:12px;
     }
-    .chat-input-container {
-      display: flex;
-      padding: 10px;
-      border-top: 1px solid #e5e7eb;
-      background: #ffffff;
-      gap: 8px;
+
+    .message.user {
+      background: var(--user-bg);
+      color: #fff;
+      border-bottom-right-radius:8px;
+      border-bottom-left-radius:12px;
+      max-width:60%;
+      min-width:42px;
+      padding:8px 12px;
+      font-weight:600;
     }
-    .chat-input {
-      flex: 1;
-      border-radius: 999px;
-      border: 1px solid #d1d5db;
-      padding: 10px 14px;
-      font-size: 14px;
-      outline: none;
+
+    /* Strong reset for elements inside message content */
+    .message .content > * {
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+      padding: 0 !important;
     }
-    .chat-input:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 1px rgba(37,99,235,0.25);
+
+    /* If the content is a single paragraph only, render it inline to avoid large vertical height */
+    .message .content:only-child,
+    .message .content > p:only-child {
+      display: inline !important;
     }
-    .send-button {
-      border-radius: 999px;
-      border: none;
-      background: #2563eb;
-      color: white;
-      padding: 0 18px;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+
+    /* Lists small spacing */
+    .message .content ul, .message .content ol {
+      margin: 0 0 0.25em 0 !important;
+      padding-left: 1.05em !important;
     }
-    .send-button:disabled {
-      opacity: 0.5;
-      cursor: default;
+
+    .message pre {
+      background: #0b1220;
+      color: #e6edf3;
+      padding:8px;
+      border-radius:8px;
+      overflow:auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+      font-size:13px;
+      margin:6px 0 0 0;
     }
-    .status {
-      font-size: 12px;
-      color: #6b7280;
-      padding: 4px 16px 10px;
-    }
+    .message code { background: rgba(0,0,0,0.06); padding:2px 6px; border-radius:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:13px; }
+
+    .input-row { padding:10px 12px; border-top:1px solid rgba(15,23,42,0.04); display:flex; gap:10px; align-items:center; }
+    .chat-input { flex:1; border-radius:999px; border:1px solid #e6eefc; padding:10px 14px; font-size:14px; background:#f8fbff; outline:none; }
+    .chat-input:focus{ box-shadow:0 6px 18px rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.6); }
+    .send-button{ border-radius:999px; background:var(--accent); color:#fff; border:none; padding:10px 16px; font-weight:600; cursor:pointer; box-shadow: 0 6px 14px rgba(37,99,235,0.18); }
+    .send-button:disabled{ opacity:0.6; cursor:default; }
+    .status { font-size:12px; color:var(--muted); padding:8px 16px; }
+    @media(max-width:640px){ .message { font-size:13px } .messages{ padding:10px } }
   </style>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">
-      <h1>🧪 QA Assistant</h1>
-      <p>Ask anything about QA: test cases, bugs, STLC, API testing, interviews, and more.</p>
+  <div class="app">
+    <div class="header">
+      <div class="logo">🤖</div>
+      <div>
+        <h1>QA Assistant</h1>
+        <p>Ask anything about QA: concepts, test cases, API testing, or interviews.</p>
+      </div>
     </div>
-    <div id="messages" class="messages"></div>
-    <div class="status" id="status"></div>
-    <div class="chat-input-container">
-      <input
-        type="text"
-        id="chat-input"
-        class="chat-input"
-        placeholder="Type your QA question here..."
-      />
-      <button id="send-button" class="send-button">Send</button>
+
+    <div class="chat-card">
+      <div id="messages" class="messages"></div>
+      <div class="status" id="status"></div>
+
+      <div class="input-row">
+        <input id="chat-input" class="chat-input" placeholder="Type your QA question here..." />
+        <button id="send-button" class="send-button">Send</button>
+      </div>
     </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
+  <script>
+    marked.setOptions({ gfm: true, breaks: true });
+  </script>
 
   <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
