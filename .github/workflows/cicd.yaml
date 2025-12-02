@@ -1,16 +1,24 @@
-  build-and-push:
-    name: Build & Push to ECR
-    runs-on: ubuntu-latest
+name: Deploy QA Assistant Docker Image to EC2 / self-hosted
 
-    outputs:
-      image: ${{ steps.build-image.outputs.image }}
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  Continuous-Integration:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -18,7 +26,7 @@
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -27,18 +35,74 @@
           ECR_REPOSITORY: ${{ secrets.ECR_REPO }}
           IMAGE_TAG: latest
         run: |
-          set -eux
-          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          # write the step output
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
-          # debug: show that the GITHUB_OUTPUT file now contains the image (this will be masked in logs if secret-like)
-          echo "---- GITHUB_OUTPUT contents ----"
-          cat "$GITHUB_OUTPUT" || true
-          echo "--------------------------------"
+          echo "Building image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "Pushing image..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # DEBUG: show the step output value (readable immediately in workflow logs)
-      - name: Debug - show step output
+          # set job output (new recommended way)
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  Continuous-Deployment:
+    name: Deploy to self-hosted (EC2)
+    needs: Continuous-Integration
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr-deploy
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Pull image
+        env:
+          IMAGE: ${{ needs.Continuous-Integration.outputs.image }}
         run: |
-          echo "steps.build-image.outputs.image => '${{ steps.build-image.outputs.image }}'"
+          echo "Image to deploy: $IMAGE"
+          docker pull "$IMAGE"
 
+      - name: Stop + remove existing container (if any), then run new container
+        env:
+          IMAGE: ${{ needs.Continuous-Integration.outputs.image }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FAISS_DIR: ${FAISS_DIR:-/srv/qa_faiss_store}
+        run: |
+          # container name used on the host
+          CONTAINER_NAME="qa-assistant"
+
+          echo "Stopping any existing container..."
+          if docker ps -q -f name=$CONTAINER_NAME; then
+            docker stop $CONTAINER_NAME || true
+          fi
+
+          echo "Removing old container if present..."
+          if docker ps -a -q -f name=$CONTAINER_NAME; then
+            docker rm $CONTAINER_NAME || true
+          fi
+
+          echo "Create host FAISS folder if missing"
+          mkdir -p "${FAISS_DIR}"
+
+          echo "Run new container from $IMAGE"
+          docker run -d \
+            --name $CONTAINER_NAME \
+            -p 8000:8000 \
+            -e GEMINI_API_KEY="${GEMINI_API_KEY}" \
+            -e FAISS_DIR="/app/qa_faiss_store" \
+            -v "${FAISS_DIR}:/app/qa_faiss_store" \
+            --restart unless-stopped \
+            "$IMAGE"
+
+      - name: Verify container is running
+        run: |
+          sleep 3
+          docker ps --filter "name=qa-assistant" --format "table {{.Names}}\t{{.Status}}"

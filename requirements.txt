@@ -8,3 +8,5 @@ faiss-cpu # FAISS library for similarity search on vectors (our vector DB).
 pypdf # Used internally by PyPDFLoader to read and extract text from PDFs.
 ipykernel
 sentence-transformers # Free HuggingFace Embedding model
+langchain_text_splitters
+
