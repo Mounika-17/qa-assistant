@@ -13,7 +13,6 @@ jobs:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
 
-    # Define the job's outputs so the next job can access the image URL
     outputs:
       image: ${{ steps.build-image.outputs.image }}
 
@@ -43,24 +42,20 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           echo "Pushing image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-          # Set step output (recommended way)
+          
+          # Output the full image name
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Image URL: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
   Continuous-Deployment:
     name: Deploy to self-hosted (EC2)
     needs: Continuous-Integration
-
-    # Use an array of labels for more robust runner matching
     runs-on: [self-hosted, Linux]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # These AWS steps are often redundant on the self-hosted runner 
-      # if it's already configured to use the AWS CLI/Docker, but we leave them 
-      # for complete ECR login.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -74,10 +69,8 @@ jobs:
 
       - name: Pull image
         env:
-          # Pull the image URL from the previous job's output
           IMAGE: ${{ needs.Continuous-Integration.outputs.image }}
         run: |
-          # Use a default check in case the output is unexpectedly empty
           if [ -z "$IMAGE" ]; then 
             echo "ERROR: Image variable is empty. Cannot deploy."
             exit 1
@@ -89,19 +82,18 @@ jobs:
         env:
           IMAGE: ${{ needs.Continuous-Integration.outputs.image }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          FAISS_DIR: ${FAISS_DIR:-/srv/qa_faiss_store}
         run: |
-          # container name used on the host
           CONTAINER_NAME="qa-assistant"
+          FAISS_DIR="/srv/qa_faiss_store"
 
           echo "Stopping any existing container..."
-          docker stop $CONTAINER_NAME || true
+          docker stop $CONTAINER_NAME 2>/dev/null || true
 
           echo "Removing old container if present..."
-          docker rm $CONTAINER_NAME || true
+          docker rm $CONTAINER_NAME 2>/dev/null || true
 
           echo "Create host FAISS folder if missing"
-          mkdir -p "${FAISS_DIR}"
+          sudo mkdir -p "${FAISS_DIR}"
 
           echo "Run new container from $IMAGE"
           docker run -d \
@@ -115,5 +107,5 @@ jobs:
 
       - name: Verify container is running
         run: |
-          sleep 3
+          sleep 5
           docker ps --filter "name=qa-assistant" --format "table {{.Names}}\t{{.Status}}"
