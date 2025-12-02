@@ -25,7 +25,7 @@ KB_PATH = os.path.join(BASE_DIR, "knowledge_base")
 FAISS_DIR = os.getenv("FAISS_DIR", "qa_faiss_store")
 
 """
-HFEmbeddings is a wrapper class around SentenceTransformer.
+HFEmbeddings is a wrapper class around SentenceTransformer. 
 
 LangChain's FAISS and retriever expect an embedding object that implements two methods:
 1. embed_documents(texts) → used when building the FAISS index from documents.
