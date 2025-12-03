@@ -102,11 +102,13 @@ python -m app.app
 7️⃣ Open in browser
 http://localhost:8000
 
+'''
+
 🌐 Live Demo on Hugging Face Spaces  
 
-You can test the working app without cloning or installing anything:
+You can test the working app without cloning or installing anything:  
 
-👉 https://huggingface.co/spaces/mounikamm17/QA-Assistant
+👉 https://huggingface.co/spaces/mounikamm17/QA-Assistant  
 
 This link runs the app inside Hugging Face’s Docker environment.  
 
