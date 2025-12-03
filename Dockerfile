@@ -1,27 +1,38 @@
-# Use 'bullseye' (Debian 11) instead of 'buster' (Debian 10, EOL).
-# This resolves the 404/Release file errors during apt-get update.
-FROM python:3.10-slim-bullseye
+# Dockerfile for Hugging Face Spaces (Flask + FAISS + Gemini)
+FROM python:3.11-slim
+
+# metadata
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install FAISS dependencies (important!)
-# Note: This step should now work as the 'bullseye' repositories are active.
+# Install minimal system deps required for faiss and PDFs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgomp1 libopenblas-dev libblas-dev \
+    build-essential \
+    gcc \
+    g++ \
+    libgomp1 \
+    libopenblas-dev \
+    libblas-dev \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/
+# Copy requirements first for Docker cache
+COPY requirements.txt /app/requirements.txt
 
-# Install Python dependencies
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r /app/requirements.txt
 
+# Copy the rest of the repo
 COPY . /app
 
-# Standard environment variable for unbuffered Python output
-ENV PYTHONUNBUFFERED=1
+# Ensure FAISS_DIR default exists and is writable
+RUN mkdir -p /app/qa_faiss_store && chmod -R a+rwx /app/qa_faiss_store
 
-EXPOSE 8000
+# Expose port 7860 (Spaces commonly uses this port)
+EXPOSE 7860
 
-# Production server command using gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app", "--workers", "2", "--threads", "4"]
+# Use gunicorn to run the app; bind to 0.0.0.0:7860
+# Ensure your Flask app exposes a module app:app (app/__init__.py sets app = create_app())
+CMD ["gunicorn", "-b", "0.0.0.0:7860", "app:app", "--workers", "2", "--threads", "4", "--timeout", "120"]

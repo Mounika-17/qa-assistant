@@ -154,6 +154,7 @@ ENV/
 env.bak/
 venv.bak/
 qaassistant_env/
+qa-assistant-env/
 
 # Spyder project settings
 .spyderproject

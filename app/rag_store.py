@@ -22,8 +22,10 @@ BASE_DIR = os.path.dirname(__file__)
 KB_PATH = os.path.join(BASE_DIR, "knowledge_base")
 
 
-# It tries to read an environment variable named FAISS_DIR. If FAISS_DIR exists, its value is used if not then it uses "qa_faiss_store" as the default folder name.This line does NOT create the folder.It allows you to let the folder name be changed from outside the code
-FAISS_DIR = os.getenv("FAISS_DIR", "qa_faiss_store")
+# FAISS_DIR: store the faiss index inside the workspace so it persists within the Space container
+# Default: ./qa_faiss_store relative to project root
+FAISS_DIR = os.getenv("FAISS_DIR", os.path.join(BASE_DIR, "..", "qa_faiss_store"))
+FAISS_DIR = os.path.abspath(FAISS_DIR)
 
 """
 HFEmbeddings is a wrapper class around SentenceTransformer. 
